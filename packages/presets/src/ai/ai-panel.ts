@@ -128,8 +128,30 @@ export function buildErrorResponseConfig(panel: AffineAIPanelWidget) {
       name: 'Response',
       items: [
         {
-          name: 'Regenerate',
+          name: 'Replace selection',
           icon: ResetIcon,
+          showWhen: () => !!panel.answer,
+          handler: () => {
+            console.log('replace');
+          },
+        },
+        {
+          name: 'Insert below',
+          icon: DiscardIcon,
+          showWhen: () => !!panel.answer,
+          handler: () => {
+            console.log('insert below');
+          },
+        },
+      ],
+    },
+    {
+      name: '',
+      items: [
+        {
+          name: 'Retry',
+          icon: ResetIcon,
+          showWhen: () => true,
           handler: () => {
             panel.generate();
           },
@@ -137,6 +159,7 @@ export function buildErrorResponseConfig(panel: AffineAIPanelWidget) {
         {
           name: 'Discard',
           icon: DiscardIcon,
+          showWhen: () => !!panel.answer,
           handler: () => {
             panel.discard();
           },
@@ -163,6 +186,9 @@ export function buildAIPanelConfig(
       },
       login: () => {
         AIProvider.slots.requestLogin.emit({ host: panel.host });
+        panel.hide();
+      },
+      cancel: () => {
         panel.hide();
       },
       responses: buildErrorResponseConfig(panel),

@@ -6,7 +6,10 @@ import { css, html, LitElement, nothing, unsafeCSS } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { choose } from 'lit/directives/choose.js';
 
-import { AIErrorType } from '../../../../../_common/components/index.js';
+import {
+  AIErrorType,
+  type AIItemGroupConfig,
+} from '../../../../../_common/components/index.js';
 import type { AIPanelErrorConfig, CopyConfig } from '../../type.js';
 
 @customElement('ai-panel-error')
@@ -28,6 +31,7 @@ export class AIPanelError extends WithDisposable(LitElement) {
       align-items: flex-start;
       align-self: stretch;
       padding: 0px 12px;
+      gap: 4px;
       .answer-tip {
         display: flex;
         flex-direction: column;
@@ -35,7 +39,7 @@ export class AIPanelError extends WithDisposable(LitElement) {
         align-items: flex-start;
         gap: 4px;
         align-self: stretch;
-        .top {
+        .answer-label {
           align-self: stretch;
           color: var(--affine-text-secondary-color);
           /* light/xsMedium */
@@ -44,22 +48,30 @@ export class AIPanelError extends WithDisposable(LitElement) {
           font-weight: 500;
           line-height: 20px; /* 166.667% */
         }
-        .bottom {
-          align-self: stretch;
-          color: var(--affine-error-color, #eb4335);
-          font-feature-settings:
-            'clig' off,
-            'liga' off;
-          /* light/sm */
-          font-size: var(--affine-font-sm);
-          font-style: normal;
-          font-weight: 400;
-          line-height: 22px; /* 157.143% */
+      }
+      .error-info {
+        align-self: stretch;
+        color: var(--affine-error-color, #eb4335);
+        font-feature-settings:
+          'clig' off,
+          'liga' off;
+        /* light/sm */
+        font-size: var(--affine-font-sm);
+        font-style: normal;
+        font-weight: 400;
+        line-height: 22px; /* 157.143% */
 
-          a {
-            color: inherit;
-          }
+        a {
+          color: inherit;
         }
+      }
+      .action-button-group {
+        display: flex;
+        width: 100%;
+        gap: 16px;
+        align-items: center;
+        justify-content: end;
+        margin-top: 4px;
       }
       .action-button {
         display: flex;
@@ -68,23 +80,25 @@ export class AIPanelError extends WithDisposable(LitElement) {
         align-items: center;
         gap: 4px;
         border-radius: 8px;
-        border: 1px solid var(--affine-border-color, #e3e2e4);
-        background: var(--affine-white, #fff);
-        .content {
-          display: flex;
-          padding: 0px 4px;
-          justify-content: center;
-          align-items: center;
-          color: var(--affine-text-primary-color, #121212);
-          /* light/xsMedium */
-          font-size: var(--affine-font-xs);
-          font-style: normal;
-          font-weight: 500;
-          line-height: 20px; /* 166.667% */
-        }
+        border: 1px solid var(--affine-border-color);
+        background: var(--affine-white);
+        color: var(--affine-text-primary-color);
+        /* light/xsMedium */
+        font-size: var(--affine-font-xs);
+        font-style: normal;
+        font-weight: 500;
+        line-height: 20px; /* 166.667% */
       }
       .action-button:hover {
-        background: var(--affine-hover-color, rgba(0, 0, 0, 0.04));
+        cursor: pointer;
+      }
+      .action-button.primary {
+        border: 1px solid var(--affine-black-10);
+        background: var(--affine-primary-color);
+        color: var(--affine-pure-white);
+      }
+      .action-button:not(.primary):hover {
+        background: var(--affine-hover-color);
       }
     }
 
@@ -114,7 +128,25 @@ export class AIPanelError extends WithDisposable(LitElement) {
   copy?: CopyConfig;
 
   @property({ attribute: false })
-  showTip = false;
+  withAnswer = false;
+
+  private _getResponseGroup = () => {
+    let responseGroup: AIItemGroupConfig[] = [];
+    if (this.config.error?.type !== AIErrorType.GeneralNetworkError) {
+      return responseGroup;
+    }
+
+    responseGroup = this.config.responses
+      .map(group => ({
+        ...group,
+        items: group.items.filter(item =>
+          item.showWhen ? item.showWhen() : true
+        ),
+      }))
+      .filter(group => group.items.length > 0);
+
+    return responseGroup;
+  };
 
   override render() {
     const errorTemplate = choose(
@@ -123,34 +155,56 @@ export class AIPanelError extends WithDisposable(LitElement) {
         [
           AIErrorType.Unauthorized,
           () =>
-            html` <div class="bottom">
+            html` <div class="error-info">
                 You need to login to AFFiNE Cloud to continue using AFFiNE AI.
               </div>
-              <div @click=${this.config.login} class="action-button">
-                <div class="content">Login</div>
+              <div class="action-button-group">
+                <div @click=${this.config.cancel} class="action-button">
+                  Cancel
+                </div>
+                <div @click=${this.config.login} class="action-button primary">
+                  Login
+                </div>
               </div>`,
         ],
         [
           AIErrorType.PaymentRequired,
-          () => html`
-            <div class="bottom">
-              You've reached the current usage cap for AFFiNE AI. You can
-              subscribe AFFiNE AI to continue AI experience!
-            </div>
-            <div @click=${this.config.upgrade} class="action-button">
-              <div class="content">Upgrade</div>
-            </div>
-          `,
+          () =>
+            html` <div class="error-info">
+                You've reached the current usage cap for AFFiNE AI. You can
+                subscribe AFFiNE AI to continue AI experience!
+              </div>
+              <div class="action-button-group">
+                <div @click=${this.config.cancel} class="action-button">
+                  Cancel
+                </div>
+                <div
+                  @click=${this.config.upgrade}
+                  class="action-button primary"
+                >
+                  Upgrade
+                </div>
+              </div>`,
         ],
       ],
       // default error handler
       () => html`
-        <div class="bottom">
+        <!-- <div class="bottom">
           An error occurred. Please try again later. If this issue persists,
           please let us know at
           <a href="mailto:contact@toeverything.info">
             contact@toeverything.info
           </a>
+        </div> -->
+        <div class="error-info">
+          You've reached the current usage cap for AFFiNE AI. You can subscribe
+          AFFiNE AI to continue AI experience!
+        </div>
+        <div class="action-button-group">
+          <div @click=${this.config.cancel} class="action-button">Cancel</div>
+          <div @click=${this.config.upgrade} class="action-button primary">
+            Upgrade
+          </div>
         </div>
       `
     );
@@ -158,15 +212,15 @@ export class AIPanelError extends WithDisposable(LitElement) {
     return html`
       <div class="error">
         <div class="answer-tip">
-          <div class="top">Answer</div>
+          <div class="answer-label">Answer</div>
           <slot></slot>
-          ${errorTemplate}
         </div>
+        ${errorTemplate}
       </div>
-      ${this.showTip
+      ${this.withAnswer
         ? html`<ai-finish-tip .copy=${this.copy}></ai-finish-tip>`
         : nothing}
-      ${this.config.responses.length > 0
+      ${this._getResponseGroup.length > 0
         ? html`
             <ai-panel-divider></ai-panel-divider>
             ${this.config.responses.map(
