@@ -19,6 +19,7 @@ import {
 import { matchFlavours } from '../../../_common/utils/index.js';
 import type { CodeBlockModel } from '../../../code-block/index.js';
 import type { ParagraphBlockModel } from '../../../paragraph-block/index.js';
+import { transformModel } from '../../utils/operations/model.js';
 
 const findLast = (snapshot: BlockSnapshot): BlockSnapshot => {
   if (snapshot.children && snapshot.children.length > 0) {
@@ -67,6 +68,9 @@ class PasteTr {
 
   private readonly firstSnapshotIsPlainText: boolean;
 
+  // The model that the cursor should focus on after pasting
+  private pasteStartModel: BlockModel | null = null;
+
   constructor(
     readonly std: EditorHost['std'],
     readonly text: TextSelection,
@@ -82,7 +86,25 @@ class PasteTr {
 
     this.firstSnapshot = snapshot.content[0];
     this.lastSnapshot = findLast(snapshot.content[snapshot.content.length - 1]);
-    if (
+    if (matchFlavours(this.fromPointState.model, ['affine:code'])) {
+      this.lastIndex =
+        this.fromPointState.point.index +
+        this.snapshot.content
+          .map(snapshot =>
+            this._textFromSnapshot(snapshot)
+              .delta.map(op => {
+                if (op.insert) {
+                  return op.insert.length;
+                } else if (op.delete) {
+                  return -op.delete;
+                } else {
+                  return 0;
+                }
+              })
+              .reduce((a, b) => a + b, 0)
+          )
+          .reduce((a, b) => a + b + 1, -1);
+    } else if (
       this.firstSnapshot !== this.lastSnapshot &&
       this.lastSnapshot.props.text
     ) {
@@ -219,50 +241,85 @@ class PasteTr {
       return;
     }
 
-    const lastModel = this.std.doc.getBlockById(this.lastSnapshot.id);
-    assertExists(lastModel);
-
-    if (!this.to) {
-      this.std.doc.deleteBlock(this.fromPointState.model, {
-        bringChildrenTo: lastModel,
-      });
-
-      return;
+    const firstBlock = this.std.doc.getBlock(this.firstSnapshot.id);
+    assertExists(firstBlock);
+    const { model: firstModel } = firstBlock;
+    this.fromPointState.text?.clear();
+    this.fromPointState.text?.applyDelta(firstModel.text?.toDelta() ?? []);
+    if (this.fromPointState.model.flavour !== firstModel.flavour) {
+      const newId = transformModel(
+        this.fromPointState.model,
+        firstModel.flavour as BlockSuite.Flavour
+      );
+      this.pasteStartModel = this.std.doc.getBlock(newId)!.model;
+    } else if (this.fromPointState.model.flavour === 'affine:paragraph') {
+      (this.fromPointState.model as ParagraphBlockModel).type = (
+        firstModel as ParagraphBlockModel
+      ).type;
+      this.pasteStartModel = this.fromPointState.model;
+    } else {
+      this.pasteStartModel = this.fromPointState.model;
     }
 
-    this.std.doc.deleteBlock(
-      this.endPointState.model,
-      lastModel
-        ? {
-            bringChildrenTo: lastModel,
-          }
-        : undefined
-    );
-    const parent = this.std.doc.getParent(this.fromPointState.model);
-    this.std.doc.deleteBlock(
-      this.fromPointState.model,
-      parent
-        ? {
-            bringChildrenTo: parent,
-          }
-        : undefined
-    );
+    if (this.to) {
+      const [_, context] = this.std.command
+        .chain()
+        .getSelectedModels({
+          types: ['text'],
+        })
+        .run();
+      const textModels = context.selectedModels ?? [];
+      for (const model of textModels) {
+        if (
+          [this.fromPointState.model.id, this.endPointState.model.id].includes(
+            model.id
+          ) ||
+          this.snapshot.content.map(block => block.id).includes(model.id)
+        ) {
+          continue;
+        }
+        this.std.doc.deleteBlock(model);
+      }
+      this.std.doc.deleteBlock(
+        this.endPointState.model,
+        this.pasteStartModel
+          ? {
+              bringChildrenTo: this.pasteStartModel,
+            }
+          : undefined
+      );
+    }
+
+    const lastBlock = this.std.doc.getBlock(this.lastSnapshot.id);
+    assertExists(lastBlock);
+    const { model: lastModel } = lastBlock;
+
+    this.std.doc.moveBlocks(this.pasteStartModel.children, lastModel);
+    queueMicrotask(() => {
+      this.std.doc.deleteBlock(firstModel, {
+        bringChildrenTo: this.pasteStartModel!,
+      });
+    });
   };
 
   focusPasted = () => {
     const host = this.std.host as EditorHost;
 
-    const lastModel = this.std.doc.getBlockById(this.lastSnapshot.id);
-    assertExists(lastModel);
+    const cursorBlock =
+      this.fromPointState.model.flavour === 'affine:code'
+        ? this.std.doc.getBlock(this.fromPointState.model.id)
+        : this.std.doc.getBlock(this.lastSnapshot.id);
+    assertExists(cursorBlock);
+    const { model: cursorModel } = cursorBlock;
 
     host.updateComplete
       .then(() => {
         const target = this.std.host.querySelector<BlockElement>(
-          `[${host.blockIdAttr}="${lastModel.id}"]`
+          `[${host.blockIdAttr}="${cursorModel.id}"]`
         );
         assertExists(target);
-        if (!lastModel.text) {
-          if (matchFlavours(lastModel, ['affine:image'])) {
+        if (!cursorModel.text) {
+          if (matchFlavours(cursorModel, ['affine:image'])) {
             const selection = this.std.selection.create('image', {
               blockId: target.blockId,
             });
@@ -275,13 +332,25 @@ class PasteTr {
           this.std.selection.setGroup('note', [selection]);
           return;
         }
+        if (matchFlavours(cursorModel, ['affine:code'])) {
+          const selection = this.std.selection.create('text', {
+            from: {
+              blockId: target.blockId,
+              index: this.lastIndex,
+              length: 0,
+            },
+            to: null,
+          });
+          this.std.selection.setGroup('note', [selection]);
+          return;
+        }
         const selection = this.std.selection.create('text', {
           from: {
             blockId: target.blockId,
             index:
               this.firstSnapshot === this.lastSnapshot
-                ? lastModel.text
-                  ? lastModel.text.length - this.lastIndex
+                ? cursorModel.text
+                  ? cursorModel.text.length - this.lastIndex
                   : 0
                 : this.lastIndex,
             length: 0,
