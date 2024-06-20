@@ -1,5 +1,5 @@
-import '../connector/connector-handle.js';
-import '../auto-complete/edgeless-auto-complete.js';
+import '../../connector/connector-handle.js';
+import '../../auto-complete/edgeless-auto-complete.js';
 
 import { WithDisposable } from '@blocksuite/block-std';
 import { assertType, type Disposable, Slot } from '@blocksuite/global/utils';
@@ -8,50 +8,50 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { ifDefined } from 'lit/directives/if-defined.js';
 import { styleMap } from 'lit/directives/style-map.js';
 
-import { EMBED_CARD_HEIGHT } from '../../../../_common/consts.js';
-import { isMindmapNode } from '../../../../_common/edgeless/mindmap/index.js';
-import type { IPoint } from '../../../../_common/types.js';
+import { EMBED_CARD_HEIGHT } from '../../../../../_common/consts.js';
+import { isMindmapNode } from '../../../../../_common/edgeless/mindmap/index.js';
+import type { IPoint } from '../../../../../_common/types.js';
 import {
   requestThrottledConnectFrame,
   stopPropagation,
-} from '../../../../_common/utils/event.js';
-import { pickValues } from '../../../../_common/utils/iterable.js';
-import { clamp } from '../../../../_common/utils/math.js';
-import { EDGELESS_TEXT_BLOCK_MIN_WIDTH } from '../../../../edgeless-text/edgeless-text-block.js';
-import type { EdgelessTextBlockModel } from '../../../../edgeless-text/edgeless-text-model.js';
+} from '../../../../../_common/utils/event.js';
+import { pickValues } from '../../../../../_common/utils/iterable.js';
+import { clamp } from '../../../../../_common/utils/math.js';
+import { EDGELESS_TEXT_BLOCK_MIN_WIDTH } from '../../../../../edgeless-text/edgeless-text-block.js';
+import type { EdgelessTextBlockModel } from '../../../../../edgeless-text/edgeless-text-model.js';
 import {
   EMBED_HTML_MIN_HEIGHT,
   EMBED_HTML_MIN_WIDTH,
-} from '../../../../embed-html-block/styles.js';
+} from '../../../../../embed-html-block/styles.js';
 import {
   SYNCED_MIN_HEIGHT,
   SYNCED_MIN_WIDTH,
-} from '../../../../embed-synced-doc-block/styles.js';
+} from '../../../../../embed-synced-doc-block/styles.js';
 import type {
   BookmarkBlockModel,
   EmbedHtmlModel,
   EmbedSyncedDocModel,
-} from '../../../../index.js';
-import { NoteBlockModel } from '../../../../note-block/note-model.js';
-import { normalizeTextBound } from '../../../../surface-block/canvas-renderer/element-renderer/text/utils.js';
-import { TextElementModel } from '../../../../surface-block/element-model/text.js';
+} from '../../../../../index.js';
+import { NoteBlockModel } from '../../../../../note-block/note-model.js';
+import { normalizeTextBound } from '../../../../../surface-block/canvas-renderer/element-renderer/text/utils.js';
+import { TextElementModel } from '../../../../../surface-block/element-model/text.js';
 import {
   CanvasElementType,
   deserializeXYWH,
   GroupElementModel,
   type PointLocation,
   ShapeElementModel,
-} from '../../../../surface-block/index.js';
+} from '../../../../../surface-block/index.js';
 import {
   Bound,
   ConnectorElementModel,
   type IVec,
   normalizeDegAngle,
   normalizeShapeBound,
-} from '../../../../surface-block/index.js';
-import type { EdgelessRootBlockComponent } from '../../edgeless-root-block.js';
-import { NOTE_MIN_HEIGHT, NOTE_MIN_WIDTH } from '../../utils/consts.js';
-import { getElementsWithoutGroup } from '../../utils/group.js';
+} from '../../../../../surface-block/index.js';
+import type { EdgelessRootBlockComponent } from '../../../edgeless-root-block.js';
+import { NOTE_MIN_HEIGHT, NOTE_MIN_WIDTH } from '../../../utils/consts.js';
+import { getElementsWithoutGroup } from '../../../utils/group.js';
 import {
   getSelectableBounds,
   getSelectedRect,
@@ -70,10 +70,10 @@ import {
   isFrameBlock,
   isImageBlock,
   isNoteBlock,
-} from '../../utils/query.js';
-import { HandleDirection } from '../resize/resize-handles.js';
-import { ResizeHandles, type ResizeMode } from '../resize/resize-handles.js';
-import { HandleResizeManager } from '../resize/resize-manager.js';
+} from '../../../utils/query.js';
+import { HandleDirection } from '../../resize/resize-handles.js';
+import { ResizeHandles, type ResizeMode } from '../../resize/resize-handles.js';
+import { HandleResizeManager } from '../../resize/resize-manager.js';
 import {
   calcAngle,
   calcAngleEdgeWithRotation,
@@ -81,7 +81,8 @@ import {
   generateCursorUrl,
   getResizeLabel,
   rotateResizeCursor,
-} from '../utils.js';
+} from '../../utils.js';
+import { EdgelessTransformableRegistry } from './controllers/index.js';
 
 export type SelectedRect = {
   left: number;
@@ -682,7 +683,20 @@ export class EdgelessSelectedRect extends WithDisposable(LitElement) {
       if (!element) return;
 
       if (isNoteBlock(element)) {
+        const controller = EdgelessTransformableRegistry.get(element);
+        if (!controller) throw new Error('Required the controller');
+
+        controller.adjust(element, {
+          bound,
+          matrix,
+          path,
+          rect: this,
+          shiftKey: this._shiftKey,
+          direction,
+        });
+
         this.#adjustNote(element, bound, direction);
+
         return;
       }
 
@@ -1224,6 +1238,16 @@ export class EdgelessSelectedRect extends WithDisposable(LitElement) {
     this.edgeless.service.updateElement(element.id, {
       xywh: bound.serialize(),
     });
+  }
+
+  updateScaleDisplay(p: number, direction: HandleDirection) {
+    this._scalePercent = `${p * 100}%`;
+    this._scaleDirection = direction;
+  }
+
+  limit(limitWidth: boolean, limitHeight: boolean) {
+    this._isWidthLimit = limitWidth;
+    this._isHeightLimit = limitHeight;
   }
 
   override firstUpdated() {
