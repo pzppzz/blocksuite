@@ -7,13 +7,11 @@ import {
   DEFAULT_NOTE_SHADOW,
 } from '../_common/edgeless/note/consts.js';
 import { NoteDisplayMode } from '../_common/types.js';
-import type { EdgelessTransformable } from '../root-block/edgeless/components/rects/edgeless-selected-rect/index.js';
 import {
   Bound,
   type SerializedXYWH,
   StrokeStyle,
 } from '../surface-block/index.js';
-import { NoteBlockTransformController } from './edgeless-transform-controller.js';
 
 export const NoteBlockSchema = defineBlockSchema({
   flavour: 'affine:note',
@@ -85,12 +83,7 @@ type NoteEdgelessProps = {
   scale?: number;
 };
 
-export class NoteBlockModel
-  extends selectable<NoteProps>(BlockModel)
-  implements EdgelessTransformable<NoteBlockModel>
-{
-  readonly transformController = new NoteBlockTransformController();
-
+export class NoteBlockModel extends selectable<NoteProps>(BlockModel) {
   private _isSelectable(): boolean {
     return this.displayMode !== NoteDisplayMode.DocOnly;
   }

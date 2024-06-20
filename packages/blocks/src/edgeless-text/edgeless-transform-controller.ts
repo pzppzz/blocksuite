@@ -1,14 +1,15 @@
 import { clamp } from '../_common/utils/math.js';
 import {
+  EdgelessTransformableRegistry,
   EdgelessTransformController,
   type TransformControllerContext,
 } from '../root-block/edgeless/components/rects/edgeless-selected-rect/controllers/index.js';
 import { HandleDirection } from '../root-block/edgeless/components/resize/resize-handles.js';
 import { Bound } from '../surface-block/index.js';
 import { EDGELESS_TEXT_BLOCK_MIN_WIDTH } from './edgeless-text-block.js';
-import type { EdgelessTextBlockModel } from './index.js';
+import { EdgelessTextBlockModel } from './index.js';
 
-export class EdgelessTextTransformController extends EdgelessTransformController<EdgelessTextBlockModel> {
+class EdgelessTextTransformController extends EdgelessTransformController<EdgelessTextBlockModel> {
   override onTransformStart(): void {}
 
   override onTransformEnd(): void {}
@@ -52,3 +53,8 @@ export class EdgelessTextTransformController extends EdgelessTransformController
     }
   }
 }
+
+EdgelessTransformableRegistry.register(
+  EdgelessTextBlockModel,
+  new EdgelessTextTransformController()
+);

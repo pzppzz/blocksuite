@@ -1,5 +1,6 @@
 import { clamp } from '../_common/utils/math.js';
 import {
+  EdgelessTransformableRegistry,
   EdgelessTransformController,
   type TransformControllerContext,
 } from '../root-block/edgeless/components/rects/edgeless-selected-rect/controllers/index.js';
@@ -8,9 +9,9 @@ import {
   NOTE_MIN_WIDTH,
 } from '../root-block/edgeless/utils/consts.js';
 import { Bound } from '../surface-block/index.js';
-import type { NoteBlockModel } from './index.js';
+import { NoteBlockModel } from './index.js';
 
-export class NoteBlockTransformController extends EdgelessTransformController<NoteBlockModel> {
+class NoteBlockTransformController extends EdgelessTransformController<NoteBlockModel> {
   override onTransformStart(element: NoteBlockModel): void {
     element.stash('edgeless');
   }
@@ -58,3 +59,8 @@ export class NoteBlockTransformController extends EdgelessTransformController<No
     });
   }
 }
+
+EdgelessTransformableRegistry.register(
+  NoteBlockModel,
+  new NoteBlockTransformController()
+);
