@@ -71,6 +71,7 @@ import {
   isImageBlock,
   isNoteBlock,
 } from '../../../utils/query.js';
+import type { EdgelessBlockPortalEdgelessText } from '../../block-portal/edgeless-text/edgeless-edgeless-text.js';
 import { HandleDirection } from '../../resize/resize-handles.js';
 import { ResizeHandles, type ResizeMode } from '../../resize/resize-handles.js';
 import { HandleResizeManager } from '../../resize/resize-manager.js';
@@ -1041,7 +1042,7 @@ export class EdgelessSelectedRect extends WithDisposable(LitElement) {
 
   #adjustEdgelessText(
     element: EdgelessTextBlockModel,
-    bounds: Bound,
+    bound: Bound,
     direction: HandleDirection
   ) {
     const oldXYWH = Bound.deserialize(element.xywh);
@@ -1051,28 +1052,35 @@ export class EdgelessSelectedRect extends WithDisposable(LitElement) {
       direction === HandleDirection.BottomRight ||
       direction === HandleDirection.BottomLeft
     ) {
-      const newScale = element.scale * (bounds.w / oldXYWH.w);
+      const newScale = element.scale * (bound.w / oldXYWH.w);
       this._scalePercent = `${Math.round(newScale * 100)}%`;
       this._scaleDirection = direction;
 
-      bounds.h = bounds.w * (oldXYWH.h / oldXYWH.w);
+      bound.h = bound.w * (oldXYWH.h / oldXYWH.w);
       this.edgeless.service.updateElement(element.id, {
         scale: newScale,
-        xywh: bounds.serialize(),
+        xywh: bound.serialize(),
       });
     } else if (
       direction === HandleDirection.Left ||
       direction === HandleDirection.Right
     ) {
+      const textPortal = this.edgeless.rootElementContainer.getPortalElement(
+        element.id
+      ) as EdgelessBlockPortalEdgelessText | null;
+      if (!textPortal) return;
+
+      if (!textPortal.checkWidthOverflow(bound.w)) return;
+
       const newRealWidth = clamp(
-        bounds.w / element.scale,
+        bound.w / element.scale,
         EDGELESS_TEXT_BLOCK_MIN_WIDTH,
         Infinity
       );
-      bounds.w = newRealWidth * element.scale;
+      bound.w = newRealWidth * element.scale;
       this.edgeless.service.updateElement(element.id, {
         xywh: Bound.serialize({
-          ...bounds,
+          ...bound,
           h: oldXYWH.h,
         }),
         hasMaxWidth: true,

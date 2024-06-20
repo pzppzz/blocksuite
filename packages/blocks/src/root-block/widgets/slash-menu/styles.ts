@@ -18,7 +18,7 @@ export const styles = css`
     left: 0;
     top: 0;
     box-sizing: border-box;
-    padding: 8px;
+    padding: 8px 4px 8px 8px;
     width: 258px;
     overflow-y: auto;
     font-family: ${unsafeCSS(baseTheme.fontSansFamily)};
@@ -48,7 +48,7 @@ export const styles = css`
   }
 
   .slash-menu-item {
-    padding: 2px 4px 2px 8px;
+    padding: 2px 8px 2px 8px;
     justify-content: flex-start;
     gap: 10px;
   }
@@ -61,6 +61,7 @@ export const styles = css`
     border: 1px solid var(--affine-border-color, #e3e2e4);
     border-radius: 4px;
     color: var(--affine-icon-color);
+    background: var(--affine-background-overlay-panel-color);
 
     display: flex;
     justify-content: center;
@@ -71,11 +72,6 @@ export const styles = css`
     display: block;
   }
 
-  .slash-menu-item.delete:hover {
-    background: var(--affine-background-error-color);
-    color: var(--affine-error-color);
-    fill: var(--affine-error-color);
-  }
   .slash-menu-item.ask-ai {
     color: var(--affine-brand-color);
   }
