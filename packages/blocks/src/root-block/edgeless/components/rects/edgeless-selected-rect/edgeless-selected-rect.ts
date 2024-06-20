@@ -683,24 +683,28 @@ export class EdgelessSelectedRect extends WithDisposable(LitElement) {
       if (!element) return;
 
       if (isNoteBlock(element)) {
-        const controller = EdgelessTransformableRegistry.get(element);
-        if (!controller) throw new Error('Required the controller');
-
-        controller.adjust(element, {
-          bound,
-          matrix,
-          path,
-          rect: this,
-          shiftKey: this._shiftKey,
-          direction,
-        });
-
+        // element.transformController.adjust(element, {
+        //   bound,
+        //   matrix,
+        //   path,
+        //   rect: this,
+        //   shiftKey: this._shiftKey,
+        //   direction,
+        // });
         this.#adjustNote(element, bound, direction);
 
         return;
       }
 
       if (isEdgelessTextBlock(element)) {
+        // element.transformController.adjust(element, {
+        //   bound,
+        //   matrix,
+        //   path,
+        //   rect: this,
+        //   shiftKey: this._shiftKey,
+        //   direction,
+        // });
         this.#adjustEdgelessText(element, bound, direction);
         return;
       }
@@ -726,6 +730,9 @@ export class EdgelessSelectedRect extends WithDisposable(LitElement) {
       }
 
       if (element instanceof ShapeElementModel) {
+        const controller = EdgelessTransformableRegistry.get(element);
+        console.log(controller);
+
         this.#adjustShape(element, bound, direction);
         return;
       }
@@ -1241,7 +1248,7 @@ export class EdgelessSelectedRect extends WithDisposable(LitElement) {
   }
 
   updateScaleDisplay(p: number, direction: HandleDirection) {
-    this._scalePercent = `${p * 100}%`;
+    this._scalePercent = `${Math.round(p * 100)}%`;
     this._scaleDirection = direction;
   }
 

@@ -1,6 +1,7 @@
 import { BlockModel, defineBlockSchema } from '@blocksuite/store';
 
 import { selectable } from '../_common/edgeless/mixin/edgeless-selectable.js';
+import type { EdgelessTransformable } from '../root-block/edgeless/components/rects/edgeless-selected-rect/controllers/index.js';
 import {
   FontFamily,
   FontStyle,
@@ -9,6 +10,7 @@ import {
   type TextStyleProps,
 } from '../surface-block/consts.js';
 import type { SerializedXYWH } from '../surface-block/utils/xywh.js';
+import { EdgelessTextTransformController } from './edgeless-transform-controller.js';
 
 type EdgelessTextProps = {
   xywh: SerializedXYWH;
@@ -51,6 +53,9 @@ export const EdgelessTextBlockSchema = defineBlockSchema({
   },
 });
 
-export class EdgelessTextBlockModel extends selectable<EdgelessTextProps>(
-  BlockModel
-) {}
+export class EdgelessTextBlockModel
+  extends selectable<EdgelessTextProps>(BlockModel)
+  implements EdgelessTransformable<EdgelessTextBlockModel>
+{
+  transformController = new EdgelessTextTransformController();
+}
