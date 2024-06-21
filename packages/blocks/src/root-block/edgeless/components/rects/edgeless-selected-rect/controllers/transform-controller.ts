@@ -48,8 +48,6 @@ export class EdgelessTransformableRegistry {
     EdgelessTransformController<BlockSuite.EdgelessModelType> | null
   >();
 
-  private static _unregisteredLookup = new Set<EdgelessModelConstructor>();
-
   private constructor() {}
 
   static register<Model extends BlockSuite.EdgelessModelType>(
@@ -60,7 +58,9 @@ export class EdgelessTransformableRegistry {
       cstr,
       controller as EdgelessTransformController<BlockSuite.EdgelessModelType>
     );
-    this._unregisteredLookup.delete(cstr);
+
+    // The controllers should not be registered dynamically so this is unnecessary. But who knows :\
+    this._registry.delete(cstr);
   }
 
   static get(
@@ -68,13 +68,11 @@ export class EdgelessTransformableRegistry {
   ): EdgelessTransformController<BlockSuite.EdgelessModelType> | null {
     const cstr = model.constructor as EdgelessModelConstructor;
 
-    if (this._unregisteredLookup.has(cstr)) {
-      return null;
-    }
-
-    if (this._registry.has(cstr)) {
-      return this._registry.get(cstr) ?? null;
-    }
+    // if cache is null then the controller is not registered
+    // if cache is undefined then we have'nt checked it yet
+    // else return the cache
+    const cache = this._registry.get(cstr);
+    if (cache !== undefined) return cache;
 
     let prototype = Object.getPrototypeOf(cstr.prototype);
     while (prototype) {
@@ -88,6 +86,7 @@ export class EdgelessTransformableRegistry {
       prototype = Object.getPrototypeOf(prototype);
     }
 
+    // a controller for this the given model is not registered
     this._registry.set(cstr, null);
     return null;
   }
