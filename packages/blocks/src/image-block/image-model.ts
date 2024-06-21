@@ -42,9 +42,12 @@ export const ImageBlockSchema = defineBlockSchema({
 });
 
 export class ImageBlockModel extends selectable<ImageBlockProps>(BlockModel) {}
+
 EdgelessTransformableRegistry.register(
   ImageBlockModel,
-  getProportionalController<ImageBlockModel>(el => el.height)
+  getProportionalController<ImageBlockModel>(el => el.height, {
+    rotatable: true,
+  })
 );
 
 declare global {

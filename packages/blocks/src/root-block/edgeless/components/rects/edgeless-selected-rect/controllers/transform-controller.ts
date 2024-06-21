@@ -14,14 +14,39 @@ export type TransformControllerContext = {
   shiftKey: boolean;
 };
 
+export type TransformControllerOptions = {
+  rotatable: boolean;
+  proportional: boolean;
+  autoComplete: boolean;
+};
 export abstract class EdgelessTransformController<
   Model extends BlockSuite.EdgelessModelType,
 > {
-  readonly rotatable: boolean = false;
+  readonly rotatable: boolean;
 
-  readonly proportional: boolean = false;
+  readonly proportional: boolean;
 
-  readonly useAutoComplete: boolean = false;
+  readonly autoComplete: boolean;
+
+  rotate?: (
+    element: Model,
+    data: Omit<TransformControllerContext, 'direction'>
+  ) => void;
+
+  constructor(options?: Partial<TransformControllerOptions>) {
+    const {
+      rotatable = false,
+      proportional = false,
+      autoComplete = false,
+    } = options ?? {
+      proportional: false,
+      rotatable: false,
+      autoComplete: false,
+    };
+    this.rotatable = rotatable;
+    this.proportional = proportional;
+    this.autoComplete = autoComplete;
+  }
 
   abstract onTransformStart(
     element: Model,
@@ -34,7 +59,6 @@ export abstract class EdgelessTransformController<
 
   abstract adjust(element: Model, data: TransformControllerContext): void;
   // if defined then then rotate behavior is overridden
-  rotate?: (element: Model, data: TransformControllerContext) => void;
 }
 
 export type EdgelessModelConstructor<
@@ -65,24 +89,8 @@ export class EdgelessTransformableRegistry {
   ): EdgelessTransformController<BlockSuite.EdgelessModelType> | null {
     const cstr = model.constructor as EdgelessModelConstructor;
 
-    // if cache is null then the controller is not registered
-    // if cache is undefined then we have'nt checked it yet
-    // else return the cache
+    // todo(golok) allow inherit controller
     const cache = this._registry.get(cstr);
-    if (cache !== undefined) return cache;
-
-    let currentCstr = cstr;
-    while (currentCstr !== null) {
-      const controller = this._registry.get(currentCstr);
-      if (controller) {
-        this._registry.set(cstr, controller);
-        return controller;
-      }
-      currentCstr = Object.getPrototypeOf(currentCstr);
-    }
-
-    // a controller for this the given model is not registered
-    this._registry.set(cstr, null);
-    return null;
+    return cache ?? null;
   }
 }

@@ -197,6 +197,8 @@ export class ShapeElementModel extends SurfaceElementModel<ShapeProps> {
 }
 
 class ShapeTransformController extends EdgelessTransformController<ShapeElementModel> {
+  override rotatable = true;
+
   override onTransformStart(): void {}
 
   override onTransformEnd(): void {}

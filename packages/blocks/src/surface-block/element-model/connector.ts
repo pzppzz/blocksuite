@@ -591,18 +591,35 @@ export function isConnectorWithLabel(
 }
 
 class ConnectorTransformController extends EdgelessTransformController<ConnectorElementModel> {
+  override rotatable = true;
+
   override onTransformStart(): void {}
 
   override onTransformEnd(): void {}
 
   override adjust(
     element: ConnectorElementModel,
-    { bound, matrix, path, rect }: TransformControllerContext
+    { matrix, path, bound, rect }: TransformControllerContext
   ): void {
-    if (!path || !matrix) return;
+    if (!matrix || !path) return;
+
     const props = element.resize(bound, path, matrix);
     rect.edgeless.service.updateElement(element.id, props);
   }
+
+  override rotate = (
+    element: ConnectorElementModel,
+    { rect, bound, matrix }: Omit<TransformControllerContext, 'direction'>
+  ) => {
+    if (!matrix) return;
+
+    const props = element.resize(
+      bound,
+      element.absolutePath.map(p => p.clone()),
+      matrix
+    );
+    rect.edgeless.service.updateElement(element.id, props);
+  };
 }
 
 EdgelessTransformableRegistry.register(

@@ -10,6 +10,8 @@ import { EDGELESS_TEXT_BLOCK_MIN_WIDTH } from './edgeless-text-block.js';
 import { EdgelessTextBlockModel } from './edgeless-text-model.js';
 
 class EdgelessTextTransformController extends EdgelessTransformController<EdgelessTextBlockModel> {
+  override rotatable = true;
+
   override onTransformStart(): void {}
 
   override onTransformEnd(): void {}

@@ -37,7 +37,6 @@ import {
   getSelectedRect,
   isAttachmentBlock,
   isBookmarkBlock,
-  isCanvasElement,
   isEdgelessTextBlock,
   isEmbeddedBlock,
   isEmbedFigmaBlock,
@@ -374,33 +373,28 @@ export class EdgelessSelectedRect extends WithDisposable(LitElement) {
       .rotateSelf(delta)
       .translateSelf(-center.x, -center.y);
 
-    const elements = selection.selectedElements.filter(
-      element =>
-        isImageBlock(element) ||
-        isEdgelessTextBlock(element) ||
-        isCanvasElement(element)
-    );
+    const elements = selection.selectedElements;
 
     getElementsWithoutGroup(elements).forEach(element => {
-      const { id, rotate } = element;
-      const bounds = Bound.deserialize(element.xywh);
-      const originalCenter = bounds.center;
-      const point = new DOMPoint(...originalCenter).matrixTransform(m);
-      bounds.center = [point.x, point.y];
+      const controller = EdgelessTransformableRegistry.get(element);
+      if (!controller || !controller.rotatable) return;
 
-      if (
-        isCanvasElement(element) &&
-        element instanceof ConnectorElementModel
-      ) {
-        this.#adjustConnector(
-          element,
-          bounds,
-          m,
-          element.absolutePath.map(p => p.clone())
-        );
+      const { id, rotate } = element;
+      const bound = Bound.deserialize(element.xywh);
+      const originalCenter = bound.center;
+      const point = new DOMPoint(...originalCenter).matrixTransform(m);
+      bound.center = [point.x, point.y];
+
+      if (controller.rotate !== undefined) {
+        controller.rotate(element, {
+          rect: this,
+          shiftKey: this._shiftKey,
+          bound,
+          matrix: m,
+        });
       } else {
         this.edgeless.service.updateElement(id, {
-          xywh: bounds.serialize(),
+          xywh: bound.serialize(),
           rotate: normalizeDegAngle(rotate + delta),
         });
       }
@@ -614,16 +608,6 @@ export class EdgelessSelectedRect extends WithDisposable(LitElement) {
         isAttachmentBlock(ele) ||
         isEmbeddedBlock(ele)
     );
-  }
-
-  #adjustConnector(
-    element: ConnectorElementModel,
-    bounds: Bound,
-    matrix: DOMMatrix,
-    originalPath: PointLocation[]
-  ) {
-    const props = element.resize(bounds, originalPath, matrix);
-    this.edgeless.service.updateElement(element.id, props);
   }
 
   #adjustUseFallback(

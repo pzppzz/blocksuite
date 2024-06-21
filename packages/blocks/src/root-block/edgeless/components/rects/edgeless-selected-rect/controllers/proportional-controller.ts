@@ -3,6 +3,7 @@ import { HandleDirection } from '../../../resize/resize-handles.js';
 import {
   EdgelessTransformController,
   type TransformControllerContext,
+  type TransformControllerOptions,
 } from './transform-controller.js';
 
 export class ProportionalTransformController<
@@ -12,8 +13,11 @@ export class ProportionalTransformController<
 
   override proportional = true;
 
-  constructor(getHeight: ProportionalTransformController<Model>['_getHeight']) {
-    super();
+  constructor(
+    getHeight: ProportionalTransformController<Model>['_getHeight'],
+    options?: Partial<Omit<TransformControllerOptions, 'proportional'>>
+  ) {
+    super(options);
     this._getHeight = getHeight;
   }
 
@@ -52,6 +56,9 @@ export class ProportionalTransformController<
 
 export function getProportionalController<
   Model extends BlockSuite.EdgelessModelType,
->(getHeight: (el: Model) => number | undefined) {
-  return new ProportionalTransformController<Model>(getHeight);
+>(
+  getHeight: (el: Model) => number | undefined,
+  options?: Partial<Omit<TransformControllerOptions, 'proportional'>>
+) {
+  return new ProportionalTransformController<Model>(getHeight, options);
 }
