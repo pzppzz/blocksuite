@@ -5,6 +5,8 @@ import {
   EdgelessTransformController,
   type TransformControllerContext,
 } from '../../root-block/edgeless/components/rects/edgeless-selected-rect/controllers/index.js';
+import { normalizeShapeBound } from '../canvas-renderer/element-renderer/shape/utils.js';
+import type { IBound } from '../consts.js';
 import {
   DEFAULT_ROUGHNESS,
   FontFamily,
@@ -16,14 +18,10 @@ import {
   type TextStyleProps,
   TextVerticalAlign,
 } from '../consts.js';
-import {
-  type IBound,
-  normalizeShapeBound,
-  type SerializedXYWH,
-} from '../index.js';
 import type { Bound } from '../utils/bound.js';
 import type { PointLocation } from '../utils/point-location.js';
 import type { IVec2 } from '../utils/vec.js';
+import type { SerializedXYWH } from '../utils/xywh.js';
 import {
   type IBaseProps,
   type IHitTestOptions,

@@ -1,4 +1,4 @@
-import { Bound } from '../../../../../../surface-block/index.js';
+import { Bound } from '../../../../../../surface-block/utils/bound.js';
 import { HandleDirection } from '../../../resize/resize-handles.js';
 import {
   EdgelessTransformController,
