@@ -72,13 +72,13 @@ export class EdgelessTransformableRegistry {
     if (cache !== undefined) return cache;
 
     let currentCstr = cstr;
-    while (currentCstr) {
+    while (currentCstr !== null) {
       const controller = this._registry.get(currentCstr);
       if (controller) {
         this._registry.set(cstr, controller);
         return controller;
       }
-      currentCstr = Object.getPrototypeOf(currentCstr).constructor;
+      currentCstr = Object.getPrototypeOf(currentCstr);
     }
 
     // a controller for this the given model is not registered
