@@ -9,7 +9,7 @@ import {
   NOTE_MIN_WIDTH,
 } from '../root-block/edgeless/utils/consts.js';
 import { Bound } from '../surface-block/index.js';
-import { NoteBlockModel } from './index.js';
+import { NoteBlockModel } from './note-model.js';
 
 class NoteBlockTransformController extends EdgelessTransformController<NoteBlockModel> {
   override onTransformStart(element: NoteBlockModel): void {

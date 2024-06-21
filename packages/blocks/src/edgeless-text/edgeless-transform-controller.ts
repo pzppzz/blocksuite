@@ -7,7 +7,7 @@ import {
 import { HandleDirection } from '../root-block/edgeless/components/resize/resize-handles.js';
 import { Bound } from '../surface-block/index.js';
 import { EDGELESS_TEXT_BLOCK_MIN_WIDTH } from './edgeless-text-block.js';
-import { EdgelessTextBlockModel } from './index.js';
+import { EdgelessTextBlockModel } from './edgeless-text-model.js';
 
 class EdgelessTextTransformController extends EdgelessTransformController<EdgelessTextBlockModel> {
   override onTransformStart(): void {}
