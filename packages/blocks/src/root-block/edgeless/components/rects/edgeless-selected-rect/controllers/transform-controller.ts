@@ -58,9 +58,6 @@ export class EdgelessTransformableRegistry {
       cstr,
       controller as EdgelessTransformController<BlockSuite.EdgelessModelType>
     );
-
-    // The controllers should not be registered dynamically so this is unnecessary. But who knows :\
-    this._registry.delete(cstr);
   }
 
   static get(
@@ -74,16 +71,14 @@ export class EdgelessTransformableRegistry {
     const cache = this._registry.get(cstr);
     if (cache !== undefined) return cache;
 
-    let prototype = Object.getPrototypeOf(cstr.prototype);
-    while (prototype) {
-      const parentConstructor =
-        prototype.constructor as EdgelessModelConstructor;
-      const controller = this._registry.get(parentConstructor);
+    let currentCstr = cstr;
+    while (currentCstr) {
+      const controller = this._registry.get(currentCstr);
       if (controller) {
         this._registry.set(cstr, controller);
         return controller;
       }
-      prototype = Object.getPrototypeOf(prototype);
+      currentCstr = Object.getPrototypeOf(currentCstr).constructor;
     }
 
     // a controller for this the given model is not registered

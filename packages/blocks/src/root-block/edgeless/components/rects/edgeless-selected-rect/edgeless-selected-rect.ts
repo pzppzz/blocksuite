@@ -8,7 +8,6 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { ifDefined } from 'lit/directives/if-defined.js';
 import { styleMap } from 'lit/directives/style-map.js';
 
-import { EMBED_CARD_HEIGHT } from '../../../../../_common/consts.js';
 import { isMindmapNode } from '../../../../../_common/edgeless/mindmap/index.js';
 import type { IPoint } from '../../../../../_common/types.js';
 import {
@@ -16,24 +15,7 @@ import {
   stopPropagation,
 } from '../../../../../_common/utils/event.js';
 import { pickValues } from '../../../../../_common/utils/iterable.js';
-import { clamp } from '../../../../../_common/utils/math.js';
-import { EDGELESS_TEXT_BLOCK_MIN_WIDTH } from '../../../../../edgeless-text/edgeless-text-block.js';
-import type { EdgelessTextBlockModel } from '../../../../../edgeless-text/edgeless-text-model.js';
-import {
-  EMBED_HTML_MIN_HEIGHT,
-  EMBED_HTML_MIN_WIDTH,
-} from '../../../../../embed-html-block/styles.js';
-import {
-  SYNCED_MIN_HEIGHT,
-  SYNCED_MIN_WIDTH,
-} from '../../../../../embed-synced-doc-block/styles.js';
-import type {
-  BookmarkBlockModel,
-  EmbedHtmlModel,
-  EmbedSyncedDocModel,
-} from '../../../../../index.js';
 import { NoteBlockModel } from '../../../../../note-block/note-model.js';
-import { normalizeTextBound } from '../../../../../surface-block/canvas-renderer/element-renderer/text/utils.js';
 import { TextElementModel } from '../../../../../surface-block/element-model/text.js';
 import {
   CanvasElementType,
@@ -47,10 +29,8 @@ import {
   ConnectorElementModel,
   type IVec,
   normalizeDegAngle,
-  normalizeShapeBound,
 } from '../../../../../surface-block/index.js';
 import type { EdgelessRootBlockComponent } from '../../../edgeless-root-block.js';
-import { NOTE_MIN_HEIGHT, NOTE_MIN_WIDTH } from '../../../utils/consts.js';
 import { getElementsWithoutGroup } from '../../../utils/group.js';
 import {
   getSelectableBounds,
@@ -71,8 +51,7 @@ import {
   isImageBlock,
   isNoteBlock,
 } from '../../../utils/query.js';
-import type { EdgelessBlockPortalEdgelessText } from '../../block-portal/edgeless-text/edgeless-edgeless-text.js';
-import { HandleDirection } from '../../resize/resize-handles.js';
+import type { HandleDirection } from '../../resize/resize-handles.js';
 import { ResizeHandles, type ResizeMode } from '../../resize/resize-handles.js';
 import { HandleResizeManager } from '../../resize/resize-manager.js';
 import {
@@ -683,67 +662,19 @@ export class EdgelessSelectedRect extends WithDisposable(LitElement) {
       const element = edgeless.service.getElementById(id);
       if (!element) return;
 
-      if (isNoteBlock(element)) {
-        // element.transformController.adjust(element, {
-        //   bound,
-        //   matrix,
-        //   path,
-        //   rect: this,
-        //   shiftKey: this._shiftKey,
-        //   direction,
-        // });
-        this.#adjustNote(element, bound, direction);
-
-        return;
+      const controller = EdgelessTransformableRegistry.get(element);
+      if (controller) {
+        controller.adjust(element, {
+          bound,
+          matrix,
+          path,
+          rect: this,
+          shiftKey: this._shiftKey,
+          direction,
+        });
+      } else {
+        this.#adjustUseFallback(element, bound, direction);
       }
-
-      if (isEdgelessTextBlock(element)) {
-        // element.transformController.adjust(element, {
-        //   bound,
-        //   matrix,
-        //   path,
-        //   rect: this,
-        //   shiftKey: this._shiftKey,
-        //   direction,
-        // });
-        this.#adjustEdgelessText(element, bound, direction);
-        return;
-      }
-
-      if (isEmbedSyncedDocBlock(element)) {
-        this.#adjustEmbedSyncedDoc(element, bound, direction);
-        return;
-      }
-
-      if (isEmbedHtmlBlock(element)) {
-        this.#adjustEmbedHtml(element, bound, direction);
-        return;
-      }
-
-      if (this._isProportionalElement(element)) {
-        this.#adjustProportional(element, bound, direction);
-        return;
-      }
-
-      if (element instanceof TextElementModel) {
-        this.#adjustText(element, bound, direction);
-        return;
-      }
-
-      if (element instanceof ShapeElementModel) {
-        const controller = EdgelessTransformableRegistry.get(element);
-        console.log(controller);
-
-        this.#adjustShape(element, bound, direction);
-        return;
-      }
-
-      if (element instanceof ConnectorElementModel && matrix && path) {
-        this.#adjustConnector(element, bound, matrix, path);
-        return;
-      }
-
-      this.#adjustUseFallback(element, bound, direction);
     });
   };
 
@@ -996,243 +927,6 @@ export class EdgelessSelectedRect extends WithDisposable(LitElement) {
         isAttachmentBlock(ele) ||
         isEmbeddedBlock(ele)
     );
-  }
-
-  #adjustNote(
-    element: NoteBlockModel,
-    bound: Bound,
-    direction: HandleDirection
-  ) {
-    const curBound = Bound.deserialize(element.xywh);
-
-    let scale = element.edgeless.scale ?? 1;
-    let width = curBound.w / scale;
-    let height = curBound.h / scale;
-
-    if (this._shiftKey) {
-      scale = bound.w / width;
-      this._scalePercent = `${Math.round(scale * 100)}%`;
-      this._scaleDirection = direction;
-    } else if (curBound.h !== bound.h) {
-      this.edgeless.doc.updateBlock(element, () => {
-        element.edgeless.collapse = true;
-        element.edgeless.collapsedHeight = bound.h / scale;
-      });
-    }
-
-    width = bound.w / scale;
-    width = clamp(width, NOTE_MIN_WIDTH, Infinity);
-    bound.w = width * scale;
-
-    height = bound.h / scale;
-    height = clamp(height, NOTE_MIN_HEIGHT, Infinity);
-    bound.h = height * scale;
-
-    this._isWidthLimit = width === NOTE_MIN_WIDTH;
-    this._isHeightLimit = height === NOTE_MIN_HEIGHT;
-
-    this.edgeless.service.updateElement(element.id, {
-      edgeless: {
-        ...element.edgeless,
-        scale,
-      },
-      xywh: bound.serialize(),
-    });
-  }
-
-  #adjustEdgelessText(
-    element: EdgelessTextBlockModel,
-    bound: Bound,
-    direction: HandleDirection
-  ) {
-    const oldXYWH = Bound.deserialize(element.xywh);
-    if (
-      direction === HandleDirection.TopLeft ||
-      direction === HandleDirection.TopRight ||
-      direction === HandleDirection.BottomRight ||
-      direction === HandleDirection.BottomLeft
-    ) {
-      const newScale = element.scale * (bound.w / oldXYWH.w);
-      this._scalePercent = `${Math.round(newScale * 100)}%`;
-      this._scaleDirection = direction;
-
-      bound.h = bound.w * (oldXYWH.h / oldXYWH.w);
-      this.edgeless.service.updateElement(element.id, {
-        scale: newScale,
-        xywh: bound.serialize(),
-      });
-    } else if (
-      direction === HandleDirection.Left ||
-      direction === HandleDirection.Right
-    ) {
-      const textPortal = this.edgeless.rootElementContainer.getPortalElement(
-        element.id
-      ) as EdgelessBlockPortalEdgelessText | null;
-      if (!textPortal) return;
-
-      if (!textPortal.checkWidthOverflow(bound.w)) return;
-
-      const newRealWidth = clamp(
-        bound.w / element.scale,
-        EDGELESS_TEXT_BLOCK_MIN_WIDTH,
-        Infinity
-      );
-      bound.w = newRealWidth * element.scale;
-      this.edgeless.service.updateElement(element.id, {
-        xywh: Bound.serialize({
-          ...bound,
-          h: oldXYWH.h,
-        }),
-        hasMaxWidth: true,
-      });
-    }
-  }
-
-  #adjustEmbedSyncedDoc(
-    element: EmbedSyncedDocModel,
-    bound: Bound,
-    direction: HandleDirection
-  ) {
-    const curBound = Bound.deserialize(element.xywh);
-
-    let scale = element.scale ?? 1;
-    let width = curBound.w / scale;
-    let height = curBound.h / scale;
-    if (this._shiftKey) {
-      scale = bound.w / width;
-      this._scalePercent = `${Math.round(scale * 100)}%`;
-      this._scaleDirection = direction;
-    }
-
-    width = bound.w / scale;
-    width = clamp(width, SYNCED_MIN_WIDTH, Infinity);
-    bound.w = width * scale;
-
-    height = bound.h / scale;
-    height = clamp(height, SYNCED_MIN_HEIGHT, Infinity);
-    bound.h = height * scale;
-
-    this._isWidthLimit = width === SYNCED_MIN_WIDTH;
-    this._isHeightLimit = height === SYNCED_MIN_HEIGHT;
-
-    this.edgeless.service.updateElement(element.id, {
-      scale,
-      xywh: bound.serialize(),
-    });
-  }
-
-  #adjustEmbedHtml(
-    element: EmbedHtmlModel,
-    bound: Bound,
-    _direction: HandleDirection
-  ) {
-    bound.w = clamp(bound.w, EMBED_HTML_MIN_WIDTH, Infinity);
-    bound.h = clamp(bound.h, EMBED_HTML_MIN_HEIGHT, Infinity);
-
-    this._isWidthLimit = bound.w === EMBED_HTML_MIN_WIDTH;
-    this._isHeightLimit = bound.h === EMBED_HTML_MIN_HEIGHT;
-
-    this.edgeless.service.updateElement(element.id, {
-      xywh: bound.serialize(),
-    });
-  }
-
-  #adjustProportional(
-    element: BlockSuite.EdgelessModelType,
-    bound: Bound,
-    direction: HandleDirection
-  ) {
-    const curBound = Bound.deserialize(element.xywh);
-
-    if (isImageBlock(element)) {
-      const { height } = element;
-      if (height) {
-        this._scalePercent = `${Math.round((bound.h / height) * 100)}%`;
-        this._scaleDirection = direction;
-      }
-    } else {
-      const cardStyle = (element as BookmarkBlockModel).style;
-      const height = EMBED_CARD_HEIGHT[cardStyle];
-      this._scalePercent = `${Math.round((bound.h / height) * 100)}%`;
-      this._scaleDirection = direction;
-    }
-    if (
-      direction === HandleDirection.Left ||
-      direction === HandleDirection.Right
-    ) {
-      bound.h = (curBound.h / curBound.w) * bound.w;
-    } else if (
-      direction === HandleDirection.Top ||
-      direction === HandleDirection.Bottom
-    ) {
-      bound.w = (curBound.w / curBound.h) * bound.h;
-    }
-
-    this.edgeless.service.updateElement(element.id, {
-      xywh: bound.serialize(),
-    });
-  }
-
-  #adjustText(
-    element: TextElementModel,
-    bound: Bound,
-    direction: HandleDirection
-  ) {
-    let p = 1;
-    if (
-      direction === HandleDirection.Left ||
-      direction === HandleDirection.Right
-    ) {
-      const {
-        text: yText,
-        fontFamily,
-        fontSize,
-        fontStyle,
-        fontWeight,
-        hasMaxWidth,
-      } = element;
-      // If the width of the text element has been changed by dragging,
-      // We need to set hasMaxWidth to true for wrapping the text
-      bound = normalizeTextBound(
-        {
-          yText,
-          fontFamily,
-          fontSize,
-          fontStyle,
-          fontWeight,
-          hasMaxWidth,
-        },
-        bound,
-        true
-      );
-      // If the width of the text element has been changed by dragging,
-      // We need to set hasMaxWidth to true for wrapping the text
-      this.edgeless.service.updateElement(element.id, {
-        xywh: bound.serialize(),
-        fontSize: element.fontSize * p,
-        hasMaxWidth: true,
-      });
-    } else {
-      p = bound.h / element.h;
-      // const newFontsize = element.fontSize * p;
-      // bound = normalizeTextBound(element, bound, false, newFontsize);
-
-      this.edgeless.service.updateElement(element.id, {
-        xywh: bound.serialize(),
-        fontSize: element.fontSize * p,
-      });
-    }
-  }
-
-  #adjustShape(
-    element: ShapeElementModel,
-    bound: Bound,
-    _direction: HandleDirection
-  ) {
-    bound = normalizeShapeBound(element, bound);
-    this.edgeless.service.updateElement(element.id, {
-      xywh: bound.serialize(),
-    });
   }
 
   #adjustConnector(
