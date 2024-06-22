@@ -27,9 +27,12 @@ export class EdgelessBlockModel<
   extends BlockModel<Props>
   implements IEdgelessElement
 {
+  private _transformController =
+    EdgelessTransformableRegistry.get(this as BlockSuite.EdgelessModelType) ??
+    null;
+
   get transformController() {
-    const controller = EdgelessTransformableRegistry.get(this);
-    return controller ?? null;
+    return this._transformController;
   }
 
   get externalXYWH(): SerializedXYWH | undefined {

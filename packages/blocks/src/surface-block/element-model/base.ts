@@ -110,11 +110,12 @@ export abstract class SurfaceElementModel<Props extends IBaseProps = IBaseProps>
 {
   abstract get type(): string;
 
+  private _transformController =
+    EdgelessTransformableRegistry.get(this as BlockSuite.EdgelessModelType) ??
+    null;
+
   get transformController() {
-    return (
-      EdgelessTransformableRegistry.get(this as BlockSuite.EdgelessModelType) ??
-      null
-    );
+    return this._transformController;
   }
 
   get externalBound(): Bound | null {
