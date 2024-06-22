@@ -37,6 +37,7 @@ import {
   getSelectedRect,
   isAttachmentBlock,
   isBookmarkBlock,
+  isCanvasElement,
   isEdgelessTextBlock,
   isEmbeddedBlock,
   isEmbedFigmaBlock,
@@ -61,7 +62,6 @@ import {
   getResizeLabel,
   rotateResizeCursor,
 } from '../../utils.js';
-import { EdgelessTransformableRegistry } from './controllers/index.js';
 import { edgelessSelectedRectStyles } from './style.js';
 
 export type SelectedRect = {
@@ -347,8 +347,7 @@ export class EdgelessSelectedRect extends WithDisposable(LitElement) {
     newBounds.forEach(({ bound, matrix, path }, id) => {
       const element = edgeless.service.getElementById(id);
       if (!element) return;
-
-      const controller = EdgelessTransformableRegistry.get(element);
+      const controller = element.transformController;
       if (controller) {
         controller.adjust(element, {
           bound,
@@ -373,11 +372,13 @@ export class EdgelessSelectedRect extends WithDisposable(LitElement) {
       .rotateSelf(delta)
       .translateSelf(-center.x, -center.y);
 
-    const elements = selection.selectedElements;
+    const elements = selection.selectedElements.filter(
+      element =>
+        isCanvasElement(element) || !!element.transformController?.rotatable
+    );
 
     getElementsWithoutGroup(elements).forEach(element => {
-      const controller = EdgelessTransformableRegistry.get(element);
-      if (!controller || !controller.rotatable) return;
+      const controller = element.transformController;
 
       const { id, rotate } = element;
       const bound = Bound.deserialize(element.xywh);
@@ -385,7 +386,7 @@ export class EdgelessSelectedRect extends WithDisposable(LitElement) {
       const point = new DOMPoint(...originalCenter).matrixTransform(m);
       bound.center = [point.x, point.y];
 
-      if (controller.rotate !== undefined) {
+      if (controller?.rotate !== undefined) {
         controller.rotate(element, {
           rect: this,
           shiftKey: this._shiftKey,

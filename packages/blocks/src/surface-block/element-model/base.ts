@@ -2,6 +2,7 @@ import type { EditorHost } from '@blocksuite/block-std';
 import { DisposableGroup } from '@blocksuite/global/utils';
 import type { Y } from '@blocksuite/store';
 
+import { EdgelessTransformableRegistry } from '../../root-block/edgeless/components/rects/edgeless-selected-rect/controllers/transform-controller.js';
 import type { EdgelessBlockModel } from '../../root-block/edgeless/edgeless-block-model.js';
 import { randomSeed } from '../rough/math.js';
 import type { SurfaceBlockModel } from '../surface-model.js';
@@ -108,6 +109,13 @@ export abstract class SurfaceElementModel<Props extends IBaseProps = IBaseProps>
   implements IEdgelessElement
 {
   abstract get type(): string;
+
+  get transformController() {
+    return (
+      EdgelessTransformableRegistry.get(this as BlockSuite.EdgelessModelType) ??
+      null
+    );
+  }
 
   get externalBound(): Bound | null {
     if (!this._local.has('externalBound')) {

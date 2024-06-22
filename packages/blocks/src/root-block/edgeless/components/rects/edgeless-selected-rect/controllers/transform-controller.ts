@@ -90,7 +90,6 @@ export class EdgelessTransformableRegistry {
     const cstr = model.constructor as EdgelessModelConstructor;
 
     // todo(golok) allow inherit controller
-    const cache = this._registry.get(cstr);
-    return cache ?? null;
+    return this._registry.get(cstr) ?? null;
   }
 }
