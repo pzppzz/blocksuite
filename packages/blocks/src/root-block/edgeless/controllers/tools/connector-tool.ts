@@ -21,6 +21,7 @@ import {
   ConnectorEndpointLocations,
   ConnectorEndpointLocationsOnTriangle,
 } from '../../../../surface-block/managers/connector-manager.js';
+import type { EdgelessTool } from '../../types.js';
 import { EdgelessToolController } from './edgeless-tool.js';
 
 enum ConnectorToolMode {
@@ -50,6 +51,10 @@ export class ConnectorToolController extends EdgelessToolController<ConnectorToo
 
   // Likes pressing `ESC`
   private _allowCancel = false;
+
+  get connector() {
+    return this._connector;
+  }
 
   readonly tool = {
     type: 'connector',
@@ -189,8 +194,8 @@ export class ConnectorToolController extends EdgelessToolController<ConnectorToo
   onContainerMouseMove(e: PointerEventState) {
     if (this._mode === ConnectorToolMode.Dragging) return;
 
-    assertExists(this._sourceBounds);
     assertExists(this._connector);
+    assertExists(this._sourceBounds);
 
     const sourceId = this._connector.source.id;
     assertExists(sourceId);
@@ -224,7 +229,11 @@ export class ConnectorToolController extends EdgelessToolController<ConnectorToo
     noop();
   }
 
-  beforeModeSwitch() {
+  beforeModeSwitch(edgelessTool: EdgelessTool) {
+    if (edgelessTool.type === 'connector') {
+      return;
+    }
+
     const id = this._connector?.id;
     if (this._allowCancel && id) {
       this._edgeless.service.removeElement(id);
